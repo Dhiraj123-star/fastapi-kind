@@ -18,6 +18,11 @@ spec:
           imagePullPolicy: Never
           ports:
             - containerPort: 8000
+
+          envFrom:
+            - configMapRef:
+                name: fastapi-config
+                
           resources:
             limits:
               cpu: "500m"
