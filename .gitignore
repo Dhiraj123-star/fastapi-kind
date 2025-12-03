@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc 
+
+# Virtual env
+env/
+venv/
+
+# Docker
+*.log
+docker-compose-override.yml
+
+# Kubernetes
+*.yaml~
+
+# Certificates (self-signed TLS)
+certs/
+*.crt
+*.key 
+
+# IDE files
+.vscode/
+.idea/
+
+# Cache
+.cache/
