@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "fastapi-chart.fullname" . }}-test-connection"
+  labels:
+    {{- include "fastapi-chart.labels" . | nindent 4 }}
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "fastapi-chart.fullname" . }}:8000/health']
+  restartPolicy: Never
