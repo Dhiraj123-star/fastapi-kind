@@ -2,7 +2,7 @@
 # 🚀 FastAPI + Docker + KIND + Kubernetes (Development Setup)
 
 A lightweight **FastAPI microservice** packaged with **Docker** and deployed locally using a **KIND (Kubernetes-in-Docker)** cluster.
-This project provides a clean, modular foundation to gradually evolve into a production-grade microservice architecture.
+This project provides a modular, extensible foundation that now includes **Ingress routing** and **local TLS/SSL termination** for secure development.
 
 ---
 
@@ -10,45 +10,78 @@ This project provides a clean, modular foundation to gradually evolve into a pro
 
 ### **1. FastAPI Application**
 
-* Minimal FastAPI service with a dedicated **`/health`** endpoint.
+* Minimal FastAPI service with a dedicated **`/health`** probe endpoint.
 * Clean structure ready for modular API expansion.
-* Interactive API documentation available via Swagger UI.
+* Built-in interactive documentation via Swagger UI.
+
+---
 
 ### **2. Dockerized Service**
 
-* Production-ready Docker image structure.
-* Build-optimized configuration using `.dockerignore`.
-* Fully local workflow with no external image registry required.
+* Production-oriented Dockerfile.
+* `.dockerignore` for optimized build context.
+* No external registry required—images load directly into KIND.
+
+---
 
 ### **3. KIND Kubernetes Cluster**
 
-* Local Kubernetes cluster created and managed through KIND.
-* Custom cluster configuration with port mappings for seamless local development.
-* Local Docker images automatically loaded into the cluster.
+* Local cluster managed through KIND.
+* Custom cluster config with port mappings.
+* Makefile-driven cluster lifecycle automation.
+
+---
 
 ### **4. Kubernetes Deployment**
 
-* Deployment manifest featuring:
+* Deployment manifest includes:
 
-  * `imagePullPolicy: Never` for local image usage
-  * CPU & memory resource requests/limits
-  * Liveness and readiness probes using the `/health` endpoint
-* Service manifest exposing the FastAPI pod internally and externally.
+  * `imagePullPolicy: Never` (for local image usage)
+  * CPU & memory requests/limits
+  * Liveness & readiness probes using `/health`
+* Service manifest exposes the application using `NodePort`.
+
+---
 
 ### **5. ConfigMap-Driven Environment Management**
 
-* Centralized configuration using Kubernetes **ConfigMap**.
-* Environment variables injected directly into the FastAPI container.
-* Clean separation between application code and environment-specific values.
+* Centralized configuration through Kubernetes **ConfigMap**.
+* Environment variables injected into the FastAPI container.
+* Clear separation between app logic and environment values.
 
-### **6. Makefile Automation**
+---
 
-* Makefile included for:
+### **6. Ingress + NGINX Routing**
 
-  * Cluster creation & deletion
-  * Image building & loading
-  * Kubernetes deployment & cleanup
-* Enables a one-command workflow for all local K8s operations.
+* NGINX Ingress Controller for clean HTTP routing.
+* Host-based routing using:
+  **`fastapi.local`**
+* Eliminates the need for manual port access on NodePort.
+
+---
+
+### **7. TLS/SSL with Self-Signed Certificates**
+
+* Secure HTTPS enabled using a **self-signed TLS certificate**.
+* Certificate stored locally and injected via Kubernetes TLS secret.
+* Ingress upgraded to terminate TLS using:
+
+  * `secretName: fastapi-tls`
+  * Valid for `https://fastapi.local/`
+* Allows testing of secure communication locally.
+
+---
+
+### **8. Makefile Automation**
+
+One-command workflows to manage:
+
+* Cluster creation & deletion
+* Docker image build & KIND load
+* Kubernetes apply/delete
+* Ingress & TLS secret deployment
+
+This greatly simplifies the local Kubernetes developer experience.
 
 ---
 
@@ -58,12 +91,16 @@ This project provides a clean, modular foundation to gradually evolve into a pro
 fastapi-kind/
 ├── app/
 │   └── main.py
+├── certs/
+│   ├── tls.crt      # self-signed SSL certificate
+│   └── tls.key
 ├── Dockerfile
 ├── .dockerignore
 ├── k8s/
 │   ├── configmap.yaml
 │   ├── deployment.yaml
-│   └── service.yaml
+│   ├── service.yaml
+│   └── ingress.yaml   # now includes TLS
 ├── kind-cluster.yaml
 ├── Makefile
 └── requirements.txt
@@ -71,14 +108,17 @@ fastapi-kind/
 
 ---
 
-## 🚀 Intended Evolution
+## 🔮 Intended Evolution
 
-This repository is designed to grow gradually into a full microservice setup with enhancements like:
+This project is structured to grow into a full production-grade microservice setup.
+Potential enhancements:
 
-* Ingress + NGINX + TLS termination
+* cert-manager for automated TLS
 * Horizontal Pod Autoscaling (HPA)
-* Kubernetes Secrets for secure configuration
-* Logging & metrics (Prometheus, Grafana)
+* Kubernetes Secrets for secure credentials
+* Logging, monitoring, and tracing (Prometheus, Grafana, OpenTelemetry)
 * Helm chart packaging
-* Multi-environment deployment structure
+* Multi-environment deployment (dev/stage/prod)
+
+---
 
