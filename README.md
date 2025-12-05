@@ -1,8 +1,8 @@
 
-# 🚀 FastAPI + Docker + KIND + Kubernetes (Development Setup)
+# 🚀 FastAPI + Docker + KIND + Kubernetes + Helm (Development Setup)
 
-A lightweight **FastAPI microservice** packaged with **Docker** and deployed locally using a **KIND (Kubernetes-in-Docker)** cluster.
-This project provides a modular, extensible foundation that now includes **Ingress routing** and **local TLS/SSL termination** for secure development.
+A lightweight, modular **FastAPI microservice** packaged with **Docker**, deployed on a local **KIND (Kubernetes-in-Docker)** cluster, and now fully managed using a **Helm chart**.
+This project also includes **Ingress routing**, **TLS/SSL termination**, and **ConfigMap-driven environment configuration**.
 
 ---
 
@@ -10,78 +10,139 @@ This project provides a modular, extensible foundation that now includes **Ingre
 
 ### **1. FastAPI Application**
 
-* Minimal FastAPI service with a dedicated **`/health`** probe endpoint.
-* Clean structure ready for modular API expansion.
-* Built-in interactive documentation via Swagger UI.
+* Minimal FastAPI service with:
+
+  * `/health` endpoint for probes
+  * `/info` endpoint reading values from ConfigMap
+* Modular and production-friendly project layout
+* Built-in interactive Swagger documentation (`/docs`)
 
 ---
 
 ### **2. Dockerized Service**
 
-* Production-oriented Dockerfile.
-* `.dockerignore` for optimized build context.
-* No external registry required—images load directly into KIND.
+* Production-ready Dockerfile
+* `.dockerignore` to reduce build context
+* No external registry required—images loaded directly into KIND via:
+
+  ```bash
+  kind load docker-image fastapi-kind:latest --name fastapi-cluster
+  ```
 
 ---
 
 ### **3. KIND Kubernetes Cluster**
 
-* Local cluster managed through KIND.
-* Custom cluster config with port mappings.
-* Makefile-driven cluster lifecycle automation.
+* Custom `kind-cluster.yaml` for local environment
+* Ingress support enabled at the node level
+* Makefile automates:
+
+  * Cluster creation/deletion
+  * Deployment
+  * Loading Docker images
 
 ---
 
-### **4. Kubernetes Deployment**
+### **4. Kubernetes Deployment (via Helm)**
 
-* Deployment manifest includes:
+Deployment is fully controlled through the **Helm chart**:
 
-  * `imagePullPolicy: Never` (for local image usage)
-  * CPU & memory requests/limits
-  * Liveness & readiness probes using `/health`
-* Service manifest exposes the application using `NodePort`.
+* `imagePullPolicy: Never` — ensures KIND uses locally loaded images
+* Liveness & Readiness probes using `/health`
+* Configurable replica count
+* Environment variables injected via ConfigMap
+* Complete override via `values.yaml`
 
 ---
 
-### **5. ConfigMap-Driven Environment Management**
+### **5. ConfigMap Environment Management**
 
-* Centralized configuration through Kubernetes **ConfigMap**.
-* Environment variables injected into the FastAPI container.
-* Clear separation between app logic and environment values.
+FastAPI environment variables (`APP_ENV`, `APP_NAME`, `APP_VERSION`) now work end-to-end thanks to:
+
+* `configmap.yaml` defining all environment keys
+* `deployment.yaml` injecting ConfigMap into the pod via:
+
+  ```yaml
+  envFrom:
+    - configMapRef:
+        name: fastapi-config
+  ```
+* `/info` endpoint now returns real values from the cluster
 
 ---
 
 ### **6. Ingress + NGINX Routing**
 
-* NGINX Ingress Controller for clean HTTP routing.
-* Host-based routing using:
-  **`fastapi.local`**
-* Eliminates the need for manual port access on NodePort.
+* NGINX Ingress Controller manages internal routing
+* Host-based routing:
+
+  ```
+  https://fastapi.local/
+  ```
+* Fully integrated through Helm’s `ingress.yaml`
 
 ---
 
-### **7. TLS/SSL with Self-Signed Certificates**
+### **7. TLS/SSL for Local HTTPS**
 
-* Secure HTTPS enabled using a **self-signed TLS certificate**.
-* Certificate stored locally and injected via Kubernetes TLS secret.
-* Ingress upgraded to terminate TLS using:
+* Local self-signed certificate stored in:
 
-  * `secretName: fastapi-tls`
-  * Valid for `https://fastapi.local/`
-* Allows testing of secure communication locally.
+  ```
+  certs/tls.crt
+  certs/tls.key
+  ```
+* Kubernetes TLS secret created via:
+
+  ```bash
+  kubectl create secret tls fastapi-tls \
+    --key certs/tls.key \
+    --cert certs/tls.crt
+  ```
+* Ingress terminates SSL using:
+
+  ```yaml
+  tls:
+    - hosts:
+        - fastapi.local
+      secretName: fastapi-tls
+  ```
 
 ---
 
-### **8. Makefile Automation**
+### **8. Helm Chart Support**
 
-One-command workflows to manage:
+The project now includes a full Helm chart:
 
-* Cluster creation & deletion
-* Docker image build & KIND load
-* Kubernetes apply/delete
-* Ingress & TLS secret deployment
+```
+fastapi-chart/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── configmap.yaml
+    ├── deployment.yaml
+    ├── ingress.yaml
+    ├── service.yaml
+```
 
-This greatly simplifies the local Kubernetes developer experience.
+Install or upgrade using:
+
+```bash
+helm upgrade --install fastapi fastapi-chart/
+```
+
+---
+
+### **9. Makefile Automation**
+
+Simplifies workflows:
+
+```bash
+make cluster     # Create KIND cluster
+make build       # Build Docker image
+make load        # Load image into KIND
+make deploy      # Install Helm chart
+make delete      # Delete cluster
+```
 
 ---
 
@@ -92,15 +153,18 @@ fastapi-kind/
 ├── app/
 │   └── main.py
 ├── certs/
-│   ├── tls.crt      # self-signed SSL certificate
+│   ├── tls.crt
 │   └── tls.key
 ├── Dockerfile
 ├── .dockerignore
-├── k8s/
-│   ├── configmap.yaml
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   └── ingress.yaml   # now includes TLS
+├── fastapi-chart/            # NEW — Helm chart
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+│       ├── configmap.yaml
+│       ├── deployment.yaml
+│       ├── ingress.yaml
+│       ├── service.yaml
 ├── kind-cluster.yaml
 ├── Makefile
 └── requirements.txt
@@ -110,15 +174,14 @@ fastapi-kind/
 
 ## 🔮 Intended Evolution
 
-This project is structured to grow into a full production-grade microservice setup.
-Potential enhancements:
+Future enhancements may include:
 
 * cert-manager for automated TLS
 * Horizontal Pod Autoscaling (HPA)
-* Kubernetes Secrets for secure credentials
-* Logging, monitoring, and tracing (Prometheus, Grafana, OpenTelemetry)
-* Helm chart packaging
-* Multi-environment deployment (dev/stage/prod)
+* Secrets for sensitive env variables
+* Advanced observability (Grafana, Prometheus, Loki, OpenTelemetry)
+* GitHub Actions CI/CD
+* Staging & production environments
+* Multi-service architecture with Helm umbrella charts
 
 ---
-
